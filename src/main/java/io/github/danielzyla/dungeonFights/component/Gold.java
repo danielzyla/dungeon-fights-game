@@ -6,26 +6,25 @@ import io.github.danielzyla.dungeonFights.repository.ComponentImageRepository;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-public class Wall extends Component {
+public class Gold extends Component {
 
-    private final ComponentImage wallImage;
+    private final ComponentImage goldImage;
     private final int x;
     private final int y;
 
-    public Wall(int x, int y) {
+    public Gold(int x, int y) {
         super(x, y);
         this.x = x;
         this.y = y;
-        this.wallImage = ComponentImageRepository.getWallImage();
+        this.goldImage = ComponentImageRepository.getGoldImage();
     }
 
-    @Override
     public Rectangle getBounds() {
         return new Rectangle(this.x, this.y, getImage().getWidth(), getImage().getHeight());
     }
 
     @Override
     public BufferedImage getImage() {
-        return wallImage.getImage();
+        return goldImage.getImage();
     }
 }
