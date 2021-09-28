@@ -1,11 +1,10 @@
 package io.github.danielzyla.dungeonFights.component;
 
-import io.github.danielzyla.dungeonFights.repository.ComponentImage;
-import io.github.danielzyla.dungeonFights.repository.ComponentImageRepository;
+import io.github.danielzyla.dungeonFights.game.AudioPlayer;
 import io.github.danielzyla.dungeonFights.game.GamePanel;
+import io.github.danielzyla.dungeonFights.repository.ComponentImageRepository;
 import io.github.danielzyla.dungeonFights.view.ScorePanel;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Iterator;
@@ -70,30 +69,20 @@ public class Hero extends Component {
         while (componentIterator.hasNext()) {
             Component component = componentIterator.next();
             if (collisionWith(component)) {
-                Rectangle cb = component.getBounds();
                 if (component instanceof Wall) {
-                    setPositionAfterCollision(cb);
+                    setPositionAfterCollision(component);
                 }
                 if (component instanceof Ghost) {
+                    AudioPlayer.playScoreSound("lost.wav");
+                    componentIterator.remove();
                     gamePanel.getHeroes().removeLast();
                     scorePanel.setRemainingHeroCount(gamePanel.getHeroes().size());
                     if (gamePanel.getHeroes().isEmpty()) {
-                        Thread thread = new Thread(() -> {
-                            ImageIcon icon = new ImageIcon("src/main/resources/img/hero.png");
-                            JOptionPane.showMessageDialog(gamePanel,
-                                    "<html><u>GAME OVER !</u></html>",
-                                    "Game status",
-                                    JOptionPane.INFORMATION_MESSAGE,
-                                    icon);
-                            SwingUtilities.invokeLater(() -> {
-                                gamePanel.stopGame();
-                                scorePanel.setPlayGameButton(true);
-                            });
-                        });
-                        thread.start();
+                        gamePanel.gameOver();
                     }
                 }
                 if (component instanceof Gold) {
+                    AudioPlayer.playScoreSound("score.wav");
                     componentIterator.remove();
                     scorePanel.setScore(scorePanel.getScore() + 10);
                 }
@@ -108,7 +97,8 @@ public class Hero extends Component {
         dy = 0;
     }
 
-    private void setPositionAfterCollision(Rectangle cb) {
+    private void setPositionAfterCollision(Component component) {
+        Rectangle cb = component.getBounds();
         if (y > cb.y && y < (cb.y + cb.height)) {
             y = cb.y + cb.height;
         }

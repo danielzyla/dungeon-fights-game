@@ -1,5 +1,7 @@
 package io.github.danielzyla.dungeonFights.repository;
 
+import io.github.danielzyla.dungeonFights.component.ComponentImage;
+
 import java.io.IOException;
 
 public class ComponentImageRepository {
@@ -49,7 +51,6 @@ public class ComponentImageRepository {
             e.printStackTrace();
         }
     }
-
 
     private ComponentImageRepository() {
     }

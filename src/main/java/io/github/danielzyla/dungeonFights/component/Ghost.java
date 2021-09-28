@@ -1,6 +1,5 @@
 package io.github.danielzyla.dungeonFights.component;
 
-import io.github.danielzyla.dungeonFights.repository.ComponentImage;
 import io.github.danielzyla.dungeonFights.repository.ComponentImageRepository;
 import io.github.danielzyla.dungeonFights.game.GamePanel;
 

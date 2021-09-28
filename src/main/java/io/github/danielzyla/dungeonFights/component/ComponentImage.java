@@ -1,4 +1,4 @@
-package io.github.danielzyla.dungeonFights.repository;
+package io.github.danielzyla.dungeonFights.component;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

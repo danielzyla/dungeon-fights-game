@@ -47,8 +47,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         scorePanel.setRemainingHeroCount(heroes.size());
     }
 
-    public void stopGame() {
-        t.stop();
+    public void gameOver() {
+        AudioPlayer.playScoreSound("gameOver.wav");
+        Thread thread = new Thread(() -> {
+            ImageIcon icon = new ImageIcon("src/main/resources/img/hero.png");
+            JOptionPane.showMessageDialog(this,
+                    "<html><u>GAME OVER !</u></html>",
+                    "Game status",
+                    JOptionPane.INFORMATION_MESSAGE,
+                    icon);
+            SwingUtilities.invokeLater(() -> {
+                t.stop();
+                scorePanel.setPlayGameButton(true);
+            });
+        });
+        thread.start();
     }
 
     @Override
@@ -67,7 +80,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    public void move() {
+    public void move() throws IOException {
         heroes.getLast().move();
         componentSet.stream()
                 .filter(component -> component instanceof Ghost)
@@ -96,7 +109,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     public void actionPerformed(ActionEvent actionEvent) {
         if (!heroes.isEmpty()) {
             repaint();
-            move();
+            try {
+                move();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
