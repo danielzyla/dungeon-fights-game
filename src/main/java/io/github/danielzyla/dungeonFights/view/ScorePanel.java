@@ -7,21 +7,30 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class ScorePanel extends JPanel implements ActionListener {
 
     Timer t = new Timer(5, this);
     private long score;
     private final JLabel scoreValueLabel;
+    private final JLabel scoreLabel;
     private int remainingHeroCount;
     private final JButton playButton;
     private GamePanel gamePanel;
 
     public ScorePanel() {
         setPreferredSize(new Dimension(1000, 50));
-        setLayout(null);
-        JLabel scoreLabel = new JLabel("SCORE");
-        scoreLabel.setBounds(600, 10, 100, 30);
+        setLayout(new FlowLayout(FlowLayout.RIGHT));
+        playButton = new JButton();
+        playButton.setText("PLAY");
+        playButton.setSize(100, 40);
+        playButton.setFont(new Font("Verdana", Font.BOLD, 20));
+        playButton.setForeground(Color.BLUE);
+        setPlayGameButton(true);
+        scoreLabel = new JLabel("SCORE", JLabel.CENTER);
+        scoreLabel.setSize(100, 30);
         scoreLabel.setForeground(Color.YELLOW);
         scoreLabel.setHorizontalAlignment(JLabel.RIGHT);
         scoreLabel.setFont(new Font("Verdana", Font.PLAIN, 20));
@@ -31,24 +40,24 @@ public class ScorePanel extends JPanel implements ActionListener {
         scoreValueLabel.setBackground(Color.WHITE);
         scoreValueLabel.setForeground(Color.BLUE);
         scoreValueLabel.setFont(new Font("Verdana", Font.PLAIN, 20));
-        scoreValueLabel.setBounds(720, 10, 250, 30);
-        add(scoreLabel);
-        add(scoreValueLabel);
-        playButton = new JButton();
-        playButton.setText("PLAY");
-        playButton.setBounds(300,5, 100, 40);
-        playButton.setFont(new Font("Verdana", Font.BOLD, 20));
-        playButton.setForeground(Color.BLUE);
-        setPlayGameButton(true);
+        scoreValueLabel.setSize(250, 30);
         t.start();
     }
 
     public void setPlayGameButton(boolean ready) {
         if (ready) {
             playButton.addActionListener(actionEvent -> {
-                gamePanel.startNewGame();
+                try {
+                    gamePanel.startNewGame();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 remove(playButton);
+                add(scoreLabel);
+                add(scoreValueLabel);
             });
+            if (Arrays.stream(this.getComponents()).collect(Collectors.toList()).contains(scoreLabel)) remove(scoreLabel);
+            if (Arrays.stream(this.getComponents()).collect(Collectors.toList()).contains(scoreValueLabel)) remove(scoreValueLabel);
             add(playButton);
         }
     }
@@ -59,11 +68,14 @@ public class ScorePanel extends JPanel implements ActionListener {
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setColor(Color.BLUE);
         g2d.fillRect(0, 0, getWidth(), getHeight());
-
         if (remainingHeroCount > 0) {
             for (int i = 1; i <= remainingHeroCount; i++) {
                 Heart heart = new Heart(50 * i, 10);
-                g2d.drawImage(heart.getImage(), heart.getX(), heart.getY(), null);
+                try {
+                    g2d.drawImage(heart.getImage(), heart.getX(), heart.getY(), null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -90,4 +102,5 @@ public class ScorePanel extends JPanel implements ActionListener {
     public void setGamePanel(GamePanel gamePanel) {
         this.gamePanel = gamePanel;
     }
+
 }

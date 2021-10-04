@@ -1,11 +1,11 @@
 package io.github.danielzyla.dungeonFights.game;
 
+import io.github.danielzyla.dungeonFights.component.*;
 import io.github.danielzyla.dungeonFights.component.Component;
-import io.github.danielzyla.dungeonFights.component.Ghost;
-import io.github.danielzyla.dungeonFights.component.Hero;
 import io.github.danielzyla.dungeonFights.view.GameBoard;
 import io.github.danielzyla.dungeonFights.view.ScorePanel;
 
+import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -13,53 +13,68 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
+import java.util.List;
 import java.util.stream.IntStream;
 
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     Timer t = new Timer(10, this);
-    private final static int CELL_SIZE = 50;
     private final GameBoard gameBoard;
     private final ScorePanel scorePanel;
     private final Set<Component> componentSet;
     private final LinkedList<Hero> heroes = new LinkedList<>();
     private final Set<Integer> pressedKeys = new HashSet<>();
+    private Hero current;
+    private final List<Bullet> bulletList = new ArrayList<>();
+    private final AudioPlayer audioPlayer;
 
-    public GamePanel(ScorePanel scorePanel) {
+
+    public GamePanel(ScorePanel scorePanel) throws IOException {
         this.scorePanel = scorePanel;
-        this.gameBoard = new GameBoard(CELL_SIZE, this);
+        this.gameBoard = new GameBoard(this);
         this.componentSet = gameBoard.getComponentSet();
+        this.audioPlayer = new AudioPlayer();
         scorePanel.setGamePanel(this);
         addKeyListener(this);
         setFocusable(true);
     }
 
-    public void startNewGame() {
+    public void startNewGame() throws InterruptedException {
         heroes.clear();
         componentSet.clear();
         scorePanel.setScore(0L);
+        bulletList.clear();
         repaint();
-        IntStream.range(0, 5).forEach(i -> heroes.add(i, new Hero(50, 50, this, scorePanel)));
+        IntStream.range(0, 3).forEach(i -> heroes.add(i, new Hero(50, 50, this, scorePanel)));
         t.start();
         scorePanel.setRemainingHeroCount(heroes.size());
+        audioPlayer.playScoreSound("soundtrack.wav");
+    }
+
+    public void levelWon() {
+        t.stop();
+        audioPlayer.stopSoundClip();
+        audioPlayer.playScoreSound("levelWon.wav");
+        openGameStatusPopUp("<html><p>CONGRATULATIONS !</p><br><p>LEVEL COMPLETE !</p></html>");
     }
 
     public void gameOver() {
-        AudioPlayer.playScoreSound("gameOver.wav");
+        t.stop();
+        audioPlayer.stopSoundClip();
+        audioPlayer.playScoreSound("gameOver.wav");
+        openGameStatusPopUp("<html><u>GAME OVER !</u></html>");
+    }
+
+    private void openGameStatusPopUp(String message) {
         Thread thread = new Thread(() -> {
-            ImageIcon icon = new ImageIcon("src/main/resources/img/hero.png");
+            ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource("/img/hero-right.png")));
             JOptionPane.showMessageDialog(this,
-                    "<html><u>GAME OVER !</u></html>",
+                    message,
                     "Game status",
                     JOptionPane.INFORMATION_MESSAGE,
                     icon);
-            SwingUtilities.invokeLater(() -> {
-                t.stop();
-                scorePanel.setPlayGameButton(true);
-            });
+            SwingUtilities.invokeLater(() -> scorePanel.setPlayGameButton(true));
         });
         thread.start();
     }
@@ -72,19 +87,44 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         g2d.fillRect(0, 0, getWidth(), getHeight());
         try {
             this.gameBoard.drawBoard(g2d);
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         if (!heroes.isEmpty()) {
-            heroes.getLast().draw(g2d);
+            try {
+                current = heroes.getLast();
+                current.draw(g2d);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (!bulletList.isEmpty()) {
+            bulletList.forEach(bullet -> {
+                try {
+                    bullet.draw(g2d);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         }
     }
 
-    public void move() throws IOException {
+    public void move() throws Exception {
         heroes.getLast().move();
         componentSet.stream()
-                .filter(component -> component instanceof Ghost)
-                .forEach(component -> ((Ghost) component).move());
+                .filter(component -> component instanceof Freak)
+                .forEach(component -> {
+                    try {
+                        ((Freak) component).move();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+        Iterator<Bullet> bulletIterator = bulletList.iterator();
+        while (bulletIterator.hasNext()) {
+            Bullet next = bulletIterator.next();
+            next.move(bulletIterator);
+        }
     }
 
     @Override
@@ -96,13 +136,31 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     public void keyPressed(KeyEvent keyEvent) {
         if (!heroes.isEmpty()) {
             pressedKeys.add(keyEvent.getKeyCode());
-            heroes.getLast().keyPressed(pressedKeys);
+            try {
+                heroes.getLast().keyPressed(pressedKeys);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     @Override
     public void keyReleased(KeyEvent keyEvent) {
-        pressedKeys.clear();
+        if (!heroes.isEmpty()) {
+            pressedKeys.remove(keyEvent.getKeyCode());
+            try {
+                heroes.getLast().keyPressed(pressedKeys);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (current.isShooterSkill() && keyEvent.getKeyCode() == 70) {
+            try {
+                current.shoot();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -111,7 +169,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             repaint();
             try {
                 move();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -128,4 +186,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     public LinkedList<Hero> getHeroes() {
         return heroes;
     }
+
+    public Hero getCurrent() {
+        return current;
+    }
+
+    public List<Bullet> getBulletList() {
+        return bulletList;
+    }
+
 }

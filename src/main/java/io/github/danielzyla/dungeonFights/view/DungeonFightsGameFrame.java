@@ -9,7 +9,10 @@ import java.awt.*;
 public class DungeonFightsGameFrame extends JFrame {
 
     public DungeonFightsGameFrame(GamePanel gamePanel) {
-        setSize(1000, 1085);
+        int boardRowNumber = gamePanel.getGameBoard().getRowNumber();
+        int boardColNumber = gamePanel.getGameBoard().getColNumber();
+        int cellSize = gamePanel.getGameBoard().getCellSize();
+        setSize(cellSize * boardColNumber, cellSize * boardRowNumber + 85);
         setTitle("Dungeon Fights");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);

@@ -18,12 +18,13 @@ public class Gold extends Component {
         this.goldImage = ComponentImageRepository.getGoldImage();
     }
 
-    public Rectangle getBounds() {
+    public Rectangle getBounds() throws Exception {
         return new Rectangle(this.x, this.y, getImage().getWidth(), getImage().getHeight());
     }
 
     @Override
-    public BufferedImage getImage() {
+    public BufferedImage getImage() throws Exception {
         return goldImage.getImage();
     }
+
 }

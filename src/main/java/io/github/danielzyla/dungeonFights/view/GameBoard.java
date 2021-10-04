@@ -1,17 +1,12 @@
 package io.github.danielzyla.dungeonFights.view;
 
+import io.github.danielzyla.dungeonFights.component.*;
 import io.github.danielzyla.dungeonFights.component.Component;
-import io.github.danielzyla.dungeonFights.component.Ghost;
-import io.github.danielzyla.dungeonFights.component.Gold;
-import io.github.danielzyla.dungeonFights.component.Wall;
 import io.github.danielzyla.dungeonFights.game.GamePanel;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.List;
 import java.util.*;
 
@@ -21,36 +16,34 @@ public class GameBoard {
     private final Set<Component> componentSet;
     private final GamePanel gamePanel;
     private final static String SOURCE_FILE_NAME = "board.csv";
-    private static List<List<String>> COMPONENT_TYPE_ROWS = null;
+    private final List<List<String>> componentTypeRows = loadCSVFile();
+    private int rowNumber;
+    private int colNumber;
 
-    static {
-        try {
-            COMPONENT_TYPE_ROWS = loadCSVFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public GameBoard(int cellSize, GamePanel gamePanel) {
-        this.cellSize = cellSize;
+    public GameBoard(GamePanel gamePanel) throws IOException {
+        this.cellSize = 50;
         this.componentSet = new HashSet<>();
         this.gamePanel = gamePanel;
     }
 
-    private static List<List<String>> loadCSVFile() throws IOException {
+    private List<List<String>> loadCSVFile() throws IOException {
         BufferedReader input = null;
         List<List<String>> componentTypeRows = new ArrayList<>();
+        List<String> types = new ArrayList<>();
         try {
-            input = new BufferedReader(new FileReader("src/main/resources/csv/" + SOURCE_FILE_NAME));
+            input = new BufferedReader(new InputStreamReader(
+                    Objects.requireNonNull(GameBoard.class.getResourceAsStream("/csv/" + SOURCE_FILE_NAME))));
             String dataRow;
             while ((dataRow = input.readLine()) != null) {
-                List<String> types = Arrays.asList(dataRow.split(","));
+                types = Arrays.asList(dataRow.split(","));
                 componentTypeRows.add(types);
             }
-        } catch (FileNotFoundException e) {
+            colNumber = types.size();
+            rowNumber = componentTypeRows.size();
+        } catch (FileNotFoundException | ExceptionInInitializerError e) {
             e.printStackTrace();
             Thread thread = new Thread(() -> {
-                ImageIcon icon = new ImageIcon("src/main/resources/img/emark.png");
+                ImageIcon icon = new ImageIcon(String.valueOf(GameBoard.class.getResourceAsStream("/img/emark.png")));
                 JOptionPane.showMessageDialog(
                         null,
                         "Nie znaleziono pliku " + SOURCE_FILE_NAME,
@@ -66,10 +59,10 @@ public class GameBoard {
         return componentTypeRows;
     }
 
-    public void drawBoard(Graphics2D g) throws IOException {
+    public void drawBoard(Graphics2D g) throws Exception {
         if (componentSet.isEmpty()) {
             int y = -1;
-            for (List<String> types : COMPONENT_TYPE_ROWS) {
+            for (List<String> types : componentTypeRows) {
                 y++;
                 int x = -1;
                 for (String type : types) {
@@ -88,10 +81,28 @@ public class GameBoard {
                                 ghost.draw(g);
                             }
                             break;
+                            case "SL": {
+                                Skull skull = new Skull(x * cellSize, y * cellSize, gamePanel);
+                                componentSet.add(skull);
+                                skull.draw(g);
+                            }
+                            break;
+                            case "GN": {
+                                Goblin goblin = new Goblin(x * cellSize, y * cellSize, gamePanel);
+                                componentSet.add(goblin);
+                                goblin.draw(g);
+                            }
+                            break;
                             case "GD": {
                                 Gold gold = new Gold(x * cellSize, y * cellSize);
                                 componentSet.add(gold);
                                 gold.draw(g);
+                            }
+                            break;
+                            case "RE": {
+                                Rune rune = new Rune(x * cellSize, y * cellSize);
+                                componentSet.add(rune);
+                                rune.draw(g);
                             }
                             break;
                         }
@@ -99,11 +110,30 @@ public class GameBoard {
                 }
             }
         } else {
-            componentSet.forEach(component -> component.draw(g));
+            componentSet.forEach(component -> {
+                try {
+                    component.draw(g);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         }
     }
 
     public Set<Component> getComponentSet() {
         return componentSet;
     }
+
+    public int getRowNumber() {
+        return rowNumber;
+    }
+
+    public int getColNumber() {
+        return colNumber;
+    }
+
+    public int getCellSize() {
+        return cellSize;
+    }
+
 }
