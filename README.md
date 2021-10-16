@@ -9,6 +9,7 @@
   - [Rules](#rules)
 ## General info
 The main character goes through dungeons full of dark creatures to get gold.
+<img src="/src/main/resources/img/preview.png">
 ## Technologies
 * Java OpenJDK 11 (UI is rendered with Java Swing library)
 * Maven
