@@ -9,32 +9,18 @@ public class BulletOnRight extends Bullet {
 
     private int x;
     private final int y;
-    private final GamePanel gamePanel;
     private final int dx;
 
     public BulletOnRight(int x, int y, GamePanel gamePanel) {
-        super(x, y);
+        super(x, y, gamePanel);
         this.x = x;
         this.y = y;
-        this.gamePanel = gamePanel;
         this.dx = 10;
     }
 
     public void move(Iterator<Bullet> bulletIterator) throws Exception {
         x += dx;
-        Iterator<Component> componentIterator = gamePanel.getGameBoard().getComponentSet().iterator();
-        while (componentIterator.hasNext()) {
-            Component next = componentIterator.next();
-            if (collisionWith(next)) {
-                if (next instanceof Wall || next instanceof Gold) {
-                    bulletIterator.remove();
-                }
-                if (next instanceof Freak) {
-                    componentIterator.remove();
-                    bulletIterator.remove();
-                }
-            }
-        }
+        setReactionOnCollision(bulletIterator);
     }
 
     @Override

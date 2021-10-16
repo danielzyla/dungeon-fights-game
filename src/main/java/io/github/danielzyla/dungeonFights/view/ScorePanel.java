@@ -7,8 +7,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 public class ScorePanel extends JPanel implements ActionListener {
 
@@ -28,7 +26,7 @@ public class ScorePanel extends JPanel implements ActionListener {
         playButton.setSize(100, 40);
         playButton.setFont(new Font("Verdana", Font.BOLD, 20));
         playButton.setForeground(Color.BLUE);
-        setPlayGameButton(true);
+        initializePlayGameButton();
         scoreLabel = new JLabel("SCORE", JLabel.CENTER);
         scoreLabel.setSize(100, 30);
         scoreLabel.setForeground(Color.YELLOW);
@@ -41,25 +39,17 @@ public class ScorePanel extends JPanel implements ActionListener {
         scoreValueLabel.setForeground(Color.BLUE);
         scoreValueLabel.setFont(new Font("Verdana", Font.PLAIN, 20));
         scoreValueLabel.setSize(250, 30);
+        add(playButton);
         t.start();
     }
 
-    public void setPlayGameButton(boolean ready) {
-        if (ready) {
-            playButton.addActionListener(actionEvent -> {
-                try {
-                    gamePanel.startNewGame();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                remove(playButton);
-                add(scoreLabel);
-                add(scoreValueLabel);
-            });
-            if (Arrays.stream(this.getComponents()).collect(Collectors.toList()).contains(scoreLabel)) remove(scoreLabel);
-            if (Arrays.stream(this.getComponents()).collect(Collectors.toList()).contains(scoreValueLabel)) remove(scoreValueLabel);
-            add(playButton);
-        }
+    public void initializePlayGameButton() {
+        playButton.addActionListener(actionEvent -> {
+            gamePanel.startGame();
+            remove(playButton);
+            add(scoreLabel);
+            add(scoreValueLabel);
+        });
     }
 
     @Override
@@ -80,6 +70,13 @@ public class ScorePanel extends JPanel implements ActionListener {
         }
     }
 
+    @Override
+    public void actionPerformed(ActionEvent actionEvent) {
+        scoreValueLabel.setText("");
+        scoreValueLabel.setText(String.valueOf(score));
+        repaint();
+    }
+
     public long getScore() {
         return score;
     }
@@ -90,13 +87,6 @@ public class ScorePanel extends JPanel implements ActionListener {
 
     public void setRemainingHeroCount(int remainingHeroCount) {
         this.remainingHeroCount = remainingHeroCount;
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent actionEvent) {
-        scoreValueLabel.setText("");
-        scoreValueLabel.setText(String.valueOf(score));
-        repaint();
     }
 
     public void setGamePanel(GamePanel gamePanel) {

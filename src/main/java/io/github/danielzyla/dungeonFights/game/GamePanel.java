@@ -1,10 +1,16 @@
 package io.github.danielzyla.dungeonFights.game;
 
-import io.github.danielzyla.dungeonFights.component.*;
+import io.github.danielzyla.dungeonFights.audio.AudioPlayer;
+import io.github.danielzyla.dungeonFights.component.Bullet;
 import io.github.danielzyla.dungeonFights.component.Component;
+import io.github.danielzyla.dungeonFights.component.Freak;
+import io.github.danielzyla.dungeonFights.component.Hero;
+import io.github.danielzyla.dungeonFights.service.ResultService;
+import io.github.danielzyla.dungeonFights.view.DungeonFightsGameFrame;
 import io.github.danielzyla.dungeonFights.view.GameBoard;
 import io.github.danielzyla.dungeonFights.view.ScorePanel;
 
+import javax.sound.sampled.LineUnavailableException;
 import javax.swing.Timer;
 import javax.swing.*;
 import java.awt.*;
@@ -12,57 +18,88 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.net.URISyntaxException;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     Timer t = new Timer(10, this);
-    private final GameBoard gameBoard;
+    private GameBoard gameBoard;
+    private final List<String> boardList;
     private final ScorePanel scorePanel;
-    private final Set<Component> componentSet;
+    private Set<Component> componentSet;
     private final LinkedList<Hero> heroes = new LinkedList<>();
     private final Set<Integer> pressedKeys = new HashSet<>();
     private Hero current;
     private final List<Bullet> bulletList = new ArrayList<>();
-    private final AudioPlayer audioPlayer;
+    private final AudioPlayer soundTrack;
+    private final ResultService resultService;
 
-
-    public GamePanel(ScorePanel scorePanel) throws IOException {
+    public GamePanel(ScorePanel scorePanel) throws IOException, LineUnavailableException, URISyntaxException {
         this.scorePanel = scorePanel;
-        this.gameBoard = new GameBoard(this);
+        this.resultService = new ResultService();
+        this.boardList = getBoardList();
+        this.gameBoard = new GameBoard(this, boardList.get(0));
         this.componentSet = gameBoard.getComponentSet();
-        this.audioPlayer = new AudioPlayer();
+        this.soundTrack = new AudioPlayer();
+        IntStream.range(0, 3).forEach(i -> heroes.add(i, new Hero(50, 50, this, scorePanel)));
+        scorePanel.setRemainingHeroCount(heroes.size());
         scorePanel.setGamePanel(this);
         addKeyListener(this);
         setFocusable(true);
     }
 
-    public void startNewGame() throws InterruptedException {
-        heroes.clear();
-        componentSet.clear();
-        scorePanel.setScore(0L);
-        bulletList.clear();
-        repaint();
-        IntStream.range(0, 3).forEach(i -> heroes.add(i, new Hero(50, 50, this, scorePanel)));
+    private List<String> getBoardList() throws IOException {
+        List<String> boardList = new ArrayList<>();
+        File file = new File(getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
+        if (file.getPath().endsWith(".jar")) {
+            final JarFile jar = new JarFile(file);
+            final Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry jarEntry = entries.nextElement();
+                final String name = jarEntry.getName();
+                if (name.startsWith("csv/")) {
+                    String boardFileName = jarEntry.getName().substring(4);
+                    if (boardFileName.length() > 0) boardList.add(jarEntry.getName().substring(4));
+                }
+            }
+            jar.close();
+        } else {
+            File local = new File(String.valueOf(Objects.requireNonNull(getClass().getResource("/csv")).getPath()));
+            int boardListSize = Objects.requireNonNull(local.listFiles()).length;
+            for (int i = 1; i <= boardListSize; i++) {
+                boardList.add("board-" + i + ".csv");
+            }
+        }
+        return boardList.stream().sorted().collect(Collectors.toList());
+    }
+
+    public void startGame() {
         t.start();
-        scorePanel.setRemainingHeroCount(heroes.size());
-        audioPlayer.playScoreSound("soundtrack.wav");
+        soundTrack.playSoundInLoop("soundtrack.wav");
     }
 
     public void levelWon() {
         t.stop();
-        audioPlayer.stopSoundClip();
-        audioPlayer.playScoreSound("levelWon.wav");
+        pressedKeys.clear();
+        soundTrack.stopSoundClip();
+        AudioPlayer.playSingleSound("levelWon.wav");
         openGameStatusPopUp("<html><p>CONGRATULATIONS !</p><br><p>LEVEL COMPLETE !</p></html>");
     }
 
     public void gameOver() {
         t.stop();
-        audioPlayer.stopSoundClip();
-        audioPlayer.playScoreSound("gameOver.wav");
+        pressedKeys.clear();
+        soundTrack.stopSoundClip();
+        AudioPlayer.playSingleSound("gameOver.wav");
         openGameStatusPopUp("<html><u>GAME OVER !</u></html>");
     }
 
@@ -74,9 +111,91 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     "Game status",
                     JOptionPane.INFORMATION_MESSAGE,
                     icon);
-            SwingUtilities.invokeLater(() -> scorePanel.setPlayGameButton(true));
+            SwingUtilities.invokeLater(() -> {
+                if (heroes.size() == 0) {
+                    saveResult();
+                } else {
+                    try {
+                        nextLevel();
+                    } catch (InterruptedException | IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         });
+        thread.setDaemon(true);
         thread.start();
+    }
+
+    private void saveResult() {
+        Thread thread = new Thread(() -> {
+            Player player = new Player(this);
+            try {
+                resultService.savePlayerResult(player.getName(), scorePanel.getScore());
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    showBestScores();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void showBestScores() throws InterruptedException {
+        Thread thread = new Thread(() -> {
+            try {
+                resultService.showBestScores();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    reloadGame();
+                } catch (InterruptedException | SQLException | IOException | LineUnavailableException | URISyntaxException e) {
+                    e.printStackTrace();
+                }
+            });
+        });
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    public void reloadGame() throws InterruptedException, SQLException, IOException, LineUnavailableException, URISyntaxException {
+        ScorePanel scorePanel = new ScorePanel();
+        GamePanel gamePanel = new GamePanel(scorePanel);
+        new DungeonFightsGameFrame(gamePanel);
+        JFrame jFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        jFrame.dispose();
+    }
+
+    private void nextLevel() throws InterruptedException, IOException {
+        pressedKeys.clear();
+        componentSet.clear();
+        bulletList.clear();
+        gameBoard = new GameBoard(this, boardList.get(nextBoardIndex()));
+        componentSet = gameBoard.getComponentSet();
+        JFrame jFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        jFrame.dispose();
+        new DungeonFightsGameFrame(this);
+        scorePanel.setPreferredSize(new Dimension(jFrame.getWidth(), 50));
+        repaint();
+        t.start();
+        soundTrack.playSoundInLoop("soundtrack.wav");
+        resultService.getContentPane().removeAll();
+        current.setX(50);
+        current.setY(50);
+    }
+
+    private int nextBoardIndex() {
+        int currentBoardIndex = boardList.indexOf(gameBoard.getSourceFileName());
+        if (currentBoardIndex < boardList.size() - 1) return currentBoardIndex + 1;
+        else return 0;
     }
 
     @Override
@@ -137,7 +256,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (!heroes.isEmpty()) {
             pressedKeys.add(keyEvent.getKeyCode());
             try {
-                heroes.getLast().keyPressed(pressedKeys);
+                current.changePositionWith(pressedKeys);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -149,12 +268,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if (!heroes.isEmpty()) {
             pressedKeys.remove(keyEvent.getKeyCode());
             try {
-                heroes.getLast().keyPressed(pressedKeys);
+                current.changePositionWith(pressedKeys);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        if (current.isShooterSkill() && keyEvent.getKeyCode() == 70) {
+        if (current.isShooter() && keyEvent.getKeyCode() == 70) {
             try {
                 current.shoot();
             } catch (Exception e) {

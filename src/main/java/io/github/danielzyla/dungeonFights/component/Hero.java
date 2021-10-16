@@ -1,6 +1,6 @@
 package io.github.danielzyla.dungeonFights.component;
 
-import io.github.danielzyla.dungeonFights.game.AudioPlayer;
+import io.github.danielzyla.dungeonFights.audio.AudioPlayer;
 import io.github.danielzyla.dungeonFights.game.GamePanel;
 import io.github.danielzyla.dungeonFights.repository.ComponentImageRepository;
 import io.github.danielzyla.dungeonFights.view.ScorePanel;
@@ -22,8 +22,7 @@ public class Hero extends Component {
     private ComponentImage heroImage;
     private final GamePanel gamePanel;
     private final ScorePanel scorePanel;
-    private final AudioPlayer audioPlayer;
-    private boolean shooterSkill;
+    private boolean shooter;
 
     public Hero(int x, int y, GamePanel gamePanel, ScorePanel scorePanel) {
         super(x, y);
@@ -32,18 +31,21 @@ public class Hero extends Component {
         this.heroImage = ComponentImageRepository.getHeroRightImage();
         this.gamePanel = gamePanel;
         this.scorePanel = scorePanel;
-        this.audioPlayer = new AudioPlayer();
-        this.shooterSkill = false;
+        this.shooter = false;
     }
 
-    public void keyPressed(Set<Integer> pressedKeys) {
-        if (pressedKeys.contains(37)) this.heroImage = ComponentImageRepository.getHeroLeftImage();
-        if (pressedKeys.contains(39)) this.heroImage = ComponentImageRepository.getHeroRightImage();
+    public void changePositionWith(Set<Integer> pressedKeys) {
+        if (pressedKeys.equals(Set.of(37))) {
+            this.heroImage = ComponentImageRepository.getHeroLeftImage();
+            setCoordinates(-1, 0);
+        }
+        if (pressedKeys.equals(Set.of(39))) {
+            this.heroImage = ComponentImageRepository.getHeroRightImage();
+            setCoordinates(1, 0);
+        }
         if (pressedKeys.isEmpty()) setCoordinates(0, 0);
-        if (pressedKeys.contains(37)) setCoordinates(-1, 0);
-        if (pressedKeys.contains(38)) setCoordinates(0, -1);
-        if (pressedKeys.contains(39)) setCoordinates(1, 0);
-        if (pressedKeys.contains(40)) setCoordinates(0, 1);
+        if (pressedKeys.equals(Set.of(38))) setCoordinates(0, -1);
+        if (pressedKeys.equals(Set.of(40))) setCoordinates(0, 1);
         if (pressedKeys.equals(Set.of(32, 37))) setCoordinates(-2, 0);
         if (pressedKeys.equals(Set.of(32, 39))) setCoordinates(2, 0);
         if (pressedKeys.equals(Set.of(32, 38))) setCoordinates(0, -2);
@@ -65,40 +67,52 @@ public class Hero extends Component {
             Component component = componentIterator.next();
             if (collisionWith(component)) {
                 if (component instanceof Wall) {
-                    setPositionAfterCollision(component);
+                    setPositionAfterCollisionWithWall(component);
                 }
                 if (component instanceof Freak) {
-                    audioPlayer.playScoreSound("lost.wav");
-                    componentIterator.remove();
-                    gamePanel.getHeroes().removeLast();
-                    scorePanel.setRemainingHeroCount(gamePanel.getHeroes().size());
-                    if (gamePanel.getHeroes().isEmpty()) {
-                        gamePanel.gameOver();
-                    }
+                    setReactionOnCollisionWithFreak(componentIterator);
                 }
                 if (component instanceof Gold) {
-                    audioPlayer.playScoreSound("score.wav");
-                    componentIterator.remove();
-                    scorePanel.setScore(scorePanel.getScore() + 10);
-                    List<Gold> remained = new ArrayList<>();
-                    for (Component componentLeft : gamePanel.getGameBoard().getComponentSet()) {
-                        if (componentLeft instanceof Gold) remained.add((Gold) componentLeft);
-                    }
-                    if (remained.isEmpty()) {
-                        gamePanel.levelWon();
-                    }
+                    setReactionOnCollisionWithGold(componentIterator);
                 }
                 if (component instanceof Rune) {
-                    audioPlayer.playScoreSound("score.wav");
-                    componentIterator.remove();
-                    this.shooterSkill = true;
-                    scorePanel.setScore(scorePanel.getScore() + 1000);
+                    setReactionOnCollisionWithRune(componentIterator);
                 }
             }
         }
     }
 
-    private void setPositionAfterCollision(Component component) throws Exception {
+    private void setReactionOnCollisionWithRune(Iterator<Component> componentIterator) {
+        AudioPlayer.playSingleSound("score.wav");
+        componentIterator.remove();
+        this.shooter = true;
+        scorePanel.setScore(scorePanel.getScore() + 1000);
+    }
+
+    private void setReactionOnCollisionWithGold(Iterator<Component> componentIterator) {
+        AudioPlayer.playSingleSound("score.wav");
+        componentIterator.remove();
+        scorePanel.setScore(scorePanel.getScore() + 10);
+        List<Gold> remained = new ArrayList<>();
+        for (Component componentLeft : gamePanel.getGameBoard().getComponentSet()) {
+            if (componentLeft instanceof Gold) remained.add((Gold) componentLeft);
+        }
+        if (remained.isEmpty()) {
+            gamePanel.levelWon();
+        }
+    }
+
+    private void setReactionOnCollisionWithFreak(Iterator<Component> componentIterator) {
+        AudioPlayer.playSingleSound("lost.wav");
+        componentIterator.remove();
+        gamePanel.getHeroes().removeLast();
+        scorePanel.setRemainingHeroCount(gamePanel.getHeroes().size());
+        if (gamePanel.getHeroes().isEmpty()) {
+            gamePanel.gameOver();
+        }
+    }
+
+    private void setPositionAfterCollisionWithWall(Component component) throws Exception {
         Rectangle cb = component.getBounds();
         if (y > cb.y && y < (cb.y + cb.height)) {
             y = cb.y + cb.height;
@@ -128,6 +142,7 @@ public class Hero extends Component {
                     gamePanel
             );
         }
+        AudioPlayer.playSingleSound("shoot.wav");
         gamePanel.getBulletList().add(bullet);
     }
 
@@ -154,8 +169,16 @@ public class Hero extends Component {
         return y;
     }
 
-    public boolean isShooterSkill() {
-        return shooterSkill;
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public void setY(int y) {
+        this.y = y;
+    }
+
+    public boolean isShooter() {
+        return shooter;
     }
 
 }

@@ -14,8 +14,14 @@ public abstract class Component {
         this.y = y;
     }
 
-    public BufferedImage getImage() throws Exception {
-        return image;
+    public abstract Rectangle getBounds() throws Exception;
+
+    public boolean collisionWith(Component component) throws Exception {
+        return getBounds().intersects(component.getBounds());
+    }
+
+    public void draw(Graphics2D g) throws Exception {
+        g.drawImage(getImage(), this.x, this.y, null);
     }
 
     public int getX() {
@@ -26,13 +32,9 @@ public abstract class Component {
         return y;
     }
 
-    public abstract Rectangle getBounds() throws Exception;
-
-    public boolean collisionWith(Component component) throws Exception {
-        return getBounds().intersects(component.getBounds());
+    public BufferedImage getImage() throws Exception {
+        return image;
     }
 
-    public void draw(Graphics2D g) throws Exception {
-        g.drawImage(getImage(), this.x, this.y, null);
-    }
+
 }

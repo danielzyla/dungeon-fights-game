@@ -24,4 +24,5 @@ public class DungeonFightsGameFrame extends JFrame {
         add(scorePanel, BorderLayout.NORTH);
         add(gamePanel, BorderLayout.CENTER);
     }
+
 }

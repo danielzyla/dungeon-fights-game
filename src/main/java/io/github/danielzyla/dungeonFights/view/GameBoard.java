@@ -15,24 +15,26 @@ public class GameBoard {
     private final int cellSize;
     private final Set<Component> componentSet;
     private final GamePanel gamePanel;
-    private final static String SOURCE_FILE_NAME = "board.csv";
-    private final List<List<String>> componentTypeRows = loadCSVFile();
+    private final String sourceFileName;
+    private final List<List<String>> componentTypeRows;
     private int rowNumber;
     private int colNumber;
 
-    public GameBoard(GamePanel gamePanel) throws IOException {
-        this.cellSize = 50;
+    public GameBoard(GamePanel gamePanel, String sourceFileName) throws IOException {
         this.componentSet = new HashSet<>();
         this.gamePanel = gamePanel;
+        this.sourceFileName = sourceFileName;
+        this.cellSize = 50;
+        this.componentTypeRows = loadCSVBoardSchema(sourceFileName);
     }
 
-    private List<List<String>> loadCSVFile() throws IOException {
+    private List<List<String>> loadCSVBoardSchema(String sourceFileName) throws IOException {
         BufferedReader input = null;
         List<List<String>> componentTypeRows = new ArrayList<>();
         List<String> types = new ArrayList<>();
         try {
             input = new BufferedReader(new InputStreamReader(
-                    Objects.requireNonNull(GameBoard.class.getResourceAsStream("/csv/" + SOURCE_FILE_NAME))));
+                    Objects.requireNonNull(GameBoard.class.getResourceAsStream("/csv/" + sourceFileName))));
             String dataRow;
             while ((dataRow = input.readLine()) != null) {
                 types = Arrays.asList(dataRow.split(","));
@@ -40,23 +42,28 @@ public class GameBoard {
             }
             colNumber = types.size();
             rowNumber = componentTypeRows.size();
-        } catch (FileNotFoundException | ExceptionInInitializerError e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            Thread thread = new Thread(() -> {
-                ImageIcon icon = new ImageIcon(String.valueOf(GameBoard.class.getResourceAsStream("/img/emark.png")));
-                JOptionPane.showMessageDialog(
-                        null,
-                        "Nie znaleziono pliku " + SOURCE_FILE_NAME,
-                        "Game alert",
-                        JOptionPane.ERROR_MESSAGE,
-                        icon
-                );
-            });
-            thread.start();
+            showInfoPopupStage(sourceFileName);
         } finally {
             if (input != null) input.close();
         }
         return componentTypeRows;
+    }
+
+    private void showInfoPopupStage(String sourceFileName) {
+        Thread thread = new Thread(() -> {
+            ImageIcon icon = new ImageIcon(String.valueOf(GameBoard.class.getResourceAsStream("/img/emark.png")));
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Nie znaleziono pliku " + sourceFileName,
+                    "Game alert",
+                    JOptionPane.ERROR_MESSAGE,
+                    icon
+            );
+            SwingUtilities.getWindowAncestor(gamePanel).dispose();
+        });
+        thread.start();
     }
 
     public void drawBoard(Graphics2D g) throws Exception {
@@ -134,6 +141,10 @@ public class GameBoard {
 
     public int getCellSize() {
         return cellSize;
+    }
+
+    public String getSourceFileName() {
+        return sourceFileName;
     }
 
 }
